@@ -26,5 +26,6 @@ void print_header(db_header_t *header);
 int read_heroes(int dbfd, db_header_t *header, hero_t **heroes);
 int list_heroes(db_header_t *dbhdr, hero_t *heroes);
 int add_hero(db_header_t *dbhdr, hero_t **heroes, char *addstring);
+// int remove_hero(db_header_t *dbhdr, hero_t **heroes, int idx);
 
 int output_file(int dbfd, db_header_t *header, hero_t *heroes);
