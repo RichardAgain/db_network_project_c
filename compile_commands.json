@@ -1,0 +1,41 @@
+[
+  {
+    "file": "src/database.c",
+    "arguments": [
+      "/usr/bin/gcc",
+      "-c",
+      "src/database.c",
+      "-o",
+      "obj/database.o",
+      "-Iinc"
+    ],
+    "directory": "/home/richardo/Projects/db_project",
+    "output": "obj/database.o"
+  },
+  {
+    "file": "src/files.c",
+    "arguments": [
+      "/usr/bin/gcc",
+      "-c",
+      "src/files.c",
+      "-o",
+      "obj/files.o",
+      "-Iinc"
+    ],
+    "directory": "/home/richardo/Projects/db_project",
+    "output": "obj/files.o"
+  },
+  {
+    "file": "src/main.c",
+    "arguments": [
+      "/usr/bin/gcc",
+      "-c",
+      "src/main.c",
+      "-o",
+      "obj/main.o",
+      "-Iinc"
+    ],
+    "directory": "/home/richardo/Projects/db_project",
+    "output": "obj/main.o"
+  }
+]
