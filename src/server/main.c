@@ -1,27 +1,27 @@
-#include <sys/types.h>
-#include <sys/socket.h>
 #include <arpa/inet.h>
-#include <unistd.h>
-#include <string.h>
-#include <stdio.h>
+#include <netinet/in.h>
 #include <poll.h>
-#include <string.h>
+#include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 #include "database.h"
 #include "defs.h"
-#include "srvpoll.h"
 #include "files.h"
+#include "srvpoll.h"
 
 int poll_loop() {
-	char buffer[4096];
+    char buffer[4096];
 
-	struct sockaddr_in serverAddress = {0};
-	struct sockaddr_in clientAddress ={0};
-	socklen_t clientAddrLen = sizeof(clientAddress);
+    struct sockaddr_in serverAddress = {0};
+    struct sockaddr_in clientAddress = {0};
+    socklen_t clientAddrLen = sizeof(clientAddress);
 
-	int conn_fd;
-	struct pollfd fds[102];
+    int conn_fd;
+    struct pollfd fds[100];
 
     int serverSocket = socket(AF_INET, SOCK_STREAM, 0);
     if (serverSocket == -1) {
@@ -41,7 +41,8 @@ int poll_loop() {
     serverAddress.sin_addr.s_addr = INADDR_ANY;
     serverAddress.sin_port = htons(PORT);
 
-    if (bind(serverSocket, (struct sockaddr *)&serverAddress, sizeof(serverAddress)) == -1) {
+    if (bind(serverSocket, (struct sockaddr *)&serverAddress,
+             sizeof(serverAddress)) == -1) {
         perror("bind");
         return 0;
     }
@@ -52,39 +53,40 @@ int poll_loop() {
     }
 
     while (1) {
-       int n_events = poll(fds, nfds, -1);
+        int n_events = poll(fds, nfds, -1);
 
-       if (fds[0].revents & POLLIN) {
-           conn_fd = accept(serverSocket, (struct sockaddr *) &clientAddress, &clientAddrLen);
-           n_events--;
+        if (fds[0].revents & POLLIN) {
+            conn_fd = accept(serverSocket, (struct sockaddr *)&clientAddress,
+                             &clientAddrLen);
+            n_events--;
 
-           fds[nfds].fd = conn_fd;
-           fds[nfds].events = POLLIN;
-           nfds++;
-       }
+            fds[nfds].fd = conn_fd;
+            fds[nfds].events = POLLIN;
+            nfds++;
+        }
 
-       for (int i = 1; i <= nfds && n_events > 0; i++) {
-           if ((fds[i].revents & POLLIN) && fds[i].fd != -1) {
-               n_events--;
+        for (int i = 1; i <= nfds && n_events > 0; i++) {
+            if ((fds[i].revents & POLLIN) && fds[i].fd != -1) {
+                n_events--;
 
-               int fd = fds[i].fd;
+                int fd = fds[i].fd;
 
-               memset(buffer, 0, sizeof(buffer));
-               int bytes_read = read(fd, buffer, sizeof(buffer));
-               if (bytes_read <= 0) {
-                   printf("closing connection\n");
+                memset(buffer, 0, sizeof(buffer));
+                int bytes_read = read(fd, buffer, sizeof(buffer));
+                if (bytes_read <= 0) {
+                    printf("closing connection\n");
 
-                   close(fd);
-                   fds[i].fd = -1;
-                   fds[i].events = POLLHUP;
-                   nfds--;
+                    close(fd);
+                    fds[i].fd = -1;
+                    fds[i].events = POLLHUP;
+                    nfds--;
 
-                   continue;
-               }
+                    continue;
+                }
 
-               printf("%s", buffer);
-           }
-       }
+                handle_client_msg(fd, buffer);
+            }
+        }
     }
 }
 
