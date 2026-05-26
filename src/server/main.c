@@ -13,15 +13,17 @@
 #include "files.h"
 #include "srvpoll.h"
 
+client_state_t clients[MAX_CLIENTS];
+
 int poll_loop() {
-    char buffer[4096];
+    char buffer[MAX_BUFFER];
 
     struct sockaddr_in serverAddress = {0};
     struct sockaddr_in clientAddress = {0};
     socklen_t clientAddrLen = sizeof(clientAddress);
 
     int conn_fd;
-    struct pollfd fds[100];
+    struct pollfd fds[MAX_CLIENTS + 1];
 
     int serverSocket = socket(AF_INET, SOCK_STREAM, 0);
     if (serverSocket == -1) {
@@ -53,15 +55,32 @@ int poll_loop() {
     }
 
     while (1) {
+        int ii = 1;
+        for (int i = 0; i < MAX_CLIENTS; i++) {
+            if (clients[i].fd != -1) {
+                fds[ii].fd = clients[i].fd;
+                fds[ii].events = POLLIN;
+                ii++;
+            }
+        }
+
         int n_events = poll(fds, nfds, -1);
 
         if (fds[0].revents & POLLIN) {
-            conn_fd = accept(serverSocket, (struct sockaddr *)&clientAddress,
-                             &clientAddrLen);
+            conn_fd = accept(serverSocket, (struct sockaddr *)&clientAddress, &clientAddrLen);
             n_events--;
 
-            fds[nfds].fd = conn_fd;
-            fds[nfds].events = POLLIN;
+            printf("New connection from %s:%d\n", inet_ntoa(clientAddress.sin_addr), ntohs(clientAddress.sin_port));
+
+            int idx = find_free_slot(clients);
+            if (idx == -1) {
+            	printf("Server full\n");
+            	close(conn_fd);
+            	continue;
+            }
+
+            clients[idx].fd = conn_fd;
+            clients[idx].state = STATE_CONNECTED;
             nfds++;
         }
 
@@ -70,27 +89,31 @@ int poll_loop() {
                 n_events--;
 
                 int fd = fds[i].fd;
+                int idx = find_slot_by_fd(clients, fd);
 
-                memset(buffer, 0, sizeof(buffer));
-                int bytes_read = read(fd, buffer, sizeof(buffer));
+                memset(&clients[idx].buffer, 0, MAX_BUFFER);
+                ssize_t bytes_read = read(fd, &clients[idx].buffer, sizeof(buffer));
+
                 if (bytes_read <= 0) {
                     printf("closing connection\n");
 
                     close(fd);
-                    fds[i].fd = -1;
-                    fds[i].events = POLLHUP;
+                    clients[idx].fd = -1;
+                    clients[idx].state = STATE_DISCONNECTED;
                     nfds--;
 
                     continue;
                 }
 
-                handle_client_msg(fd, buffer);
+                handle_client_msg(&clients[idx]);
             }
         }
     }
 }
 
 int main(int argc, char *argv[]) {
+    init_clients(clients);
+
     poll_loop();
 
     int opt;

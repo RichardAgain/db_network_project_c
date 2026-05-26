@@ -2,6 +2,7 @@
 #include <netinet/in.h>
 #include <poll.h>
 #include <stdio.h>
+#include <string.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -10,6 +11,7 @@
 #include "database.h"
 #include "defs.h"
 #include "files.h"
+#include "srvpoll.h"
 
 void send_hello_msg(int client_fd, proto_hdr_t *hdr) {
     hdr->type = htonl(MSG_HELLO_REQ);
@@ -27,8 +29,8 @@ void send_error_msg(int client_fd, proto_hdr_t *hdr) {
     write(client_fd, hdr, sizeof(proto_hdr_t));
 }
 
-void handle_client_msg(int client_fd, void *client_data) {
-    proto_hdr_t *header = (proto_hdr_t *)client_data;
+void handle_client_msg(client_state_t *client) {
+    proto_hdr_t *header = (proto_hdr_t *)client->buffer;
 
     header->type = ntohl(header->type);
     header->len = ntohs(header->len);
@@ -39,13 +41,39 @@ void handle_client_msg(int client_fd, void *client_data) {
 
         if (hello->proto_v != PROTOCOL_V) {
             printf("Protocol mismatch!\n");
-            send_error_msg(client_fd, header);
+            send_error_msg(client->fd, header);
             return;
         }
 
         printf("client sent hello!\n");
-        send_hello_msg(client_fd, header);
+        send_hello_msg(client->fd, header);
     } else {
-    	printf("Not a valid protocol header\n");
+        printf("Not a valid protocol header\n");
     }
+}
+
+void init_clients(client_state_t *clients) {
+    for (int i = 0; i < MAX_CLIENTS; i++) {
+        clients[i].fd = -1;
+        clients[i].state = STATE_NEW;
+        memset(&clients[i].buffer, 0, MAX_BUFFER);
+    }
+}
+
+int find_free_slot(client_state_t *clients) {
+    for (int i = 0; i < MAX_CLIENTS; i++) {
+        if (clients[i].fd == -1) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+int find_slot_by_fd(client_state_t *clients, int to_find) {
+	for (int i = 0; i < MAX_CLIENTS; i++) {
+        if (clients[i].fd == to_find) {
+            return i;
+        }
+    }
+    return -1;
 }

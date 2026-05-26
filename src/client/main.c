@@ -16,7 +16,7 @@ int send_hello(int fd) {
     hdr->len = htons(1);
 
     proto_hello_req *hello = (proto_hello_req *)&hdr[1];
-    hello->proto_v = htonl(PROTOCOL_V);
+    hello->proto_v = htons(PROTOCOL_V);
 
     write(fd, buf, sizeof(proto_hdr_t) + sizeof(proto_hello_req));
 
