@@ -1,12 +1,41 @@
 #include <arpa/inet.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
 
 #include "common.h"
 #include "defs.h"
+#include "srvpoll.h"
+
+int send_add_req(int fd, char *addstring) {
+    char buf[MAX_BUFFER] = {0};
+
+    proto_hdr_t *hdr = (proto_hdr_t *)buf;
+    hdr->type = htonl(MSG_ADD_HERO_REQ);
+    hdr->len = htons(1);
+
+    proto_add_hero_req *request = (proto_add_hero_req *)&hdr[1];
+    memcpy(&request->data, addstring, sizeof(request->data));
+
+    write(fd, buf, sizeof(proto_hdr_t) + sizeof(proto_add_hero_req));
+
+    // read msg from server
+    read(fd, buf, MAX_BUFFER);
+
+    hdr->type = ntohl(hdr->type);
+    hdr->len = ntohs(hdr->len);
+
+    if (hdr->type == MSG_ERROR) {
+        printf("Protocol mismatch!\n");
+        close(fd);
+        return STATUS_ERROR;
+    }
+
+    return STATUS_OK;
+}
 
 int send_hello(int fd) {
     char buf[4096] = {0};
@@ -37,14 +66,14 @@ int send_hello(int fd) {
 }
 
 int main(int argc, char *argv[]) {
-	char *addarg = NULL;
-	char *hostarg = NULL;
-	char *portarg = NULL;
-	unsigned short port = 0;
+    char *addarg = NULL;
+    char *hostarg = NULL;
+    char *portarg = NULL;
+    unsigned short port = 0;
 
-	int opt;
+    int opt;
 
-	while ((opt = getopt(argc, argv, "p:h:a:")) != -1) {
+    while ((opt = getopt(argc, argv, "p:h:a:")) != -1) {
         switch (opt) {
         case 'h':
             hostarg = optarg;
@@ -91,7 +120,16 @@ int main(int argc, char *argv[]) {
     }
 
     if (send_hello(serverSocket) != STATUS_OK) {
-    	printf("Error connecting to server\n");
+        printf("Error connecting to server\n");
         return -1;
     };
+
+    if (addarg) {
+        if (send_add_req(serverSocket, addarg) != STATUS_OK) {
+            printf("Error adding hero to database\n");
+            return -1;
+        }
+    }
+
+    close(serverSocket);
 }

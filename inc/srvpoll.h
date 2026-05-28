@@ -1,6 +1,8 @@
 #ifndef SRVPOLL_HDR
 #define SRVPOLL_HDR
 
+#include "database.h"
+
 #define PORT 5555
 #define BACKLOG 10
 #define MAX_CLIENTS 100
@@ -24,6 +26,6 @@ void init_clients(client_state_t *clients);
 int find_free_slot(client_state_t *clients);
 int find_slot_by_fd(client_state_t *clients, int to_find);
 
-void handle_client_msg(client_state_t *client);
+void handle_client_msg(int dbfd, db_header_t *db_header, hero_t **heroes, client_state_t *client);
 
 #endif

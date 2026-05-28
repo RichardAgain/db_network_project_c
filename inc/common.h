@@ -8,6 +8,10 @@
 typedef enum {
     MSG_HELLO_REQ,
     MSG_HELLO_RES,
+    MSG_LIST_HERO_REQ,
+    MSG_LIST_HERO_RES,
+    MSG_ADD_HERO_REQ,
+    MSG_ADD_HERO_RES,
     MSG_ERROR,
 } proto_type_e;
 
@@ -23,5 +27,13 @@ typedef struct {
 typedef struct {
     uint16_t proto_v;
 } proto_hello_res;
+
+typedef struct {
+    char data[256];
+} proto_add_hero_req;
+
+typedef struct {
+	char data[256];
+} proto_add_hero_res;
 
 #endif

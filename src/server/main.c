@@ -8,14 +8,13 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include "database.h"
 #include "defs.h"
 #include "files.h"
 #include "srvpoll.h"
 
 client_state_t clients[MAX_CLIENTS];
 
-int poll_loop() {
+int poll_loop(int dbfd, db_header_t *dbhdr, hero_t *heroes) {
     char buffer[MAX_BUFFER];
 
     struct sockaddr_in serverAddress = {0};
@@ -80,7 +79,7 @@ int poll_loop() {
             }
 
             clients[idx].fd = conn_fd;
-            clients[idx].state = STATE_CONNECTED;
+            clients[idx].state = STATE_HELLO;
             nfds++;
         }
 
@@ -105,7 +104,7 @@ int poll_loop() {
                     continue;
                 }
 
-                handle_client_msg(&clients[idx]);
+                handle_client_msg(dbfd, dbhdr, &heroes, &clients[idx]);
             }
         }
     }
@@ -113,8 +112,6 @@ int poll_loop() {
 
 int main(int argc, char *argv[]) {
     init_clients(clients);
-
-    poll_loop();
 
     int opt;
     int dbfd = -1;
@@ -199,6 +196,8 @@ int main(int argc, char *argv[]) {
     if (list) {
         list_heroes(db_header, heroes);
     }
+
+    poll_loop(dbfd, db_header, heroes);
 
     output_file(dbfd, db_header, heroes);
 
