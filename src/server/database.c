@@ -1,4 +1,5 @@
 #include <arpa/inet.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -127,7 +128,7 @@ int output_file(int dbfd, db_header_t *dbhdr, hero_t *heroes) {
     dbhdr->magic = htonl(dbhdr->magic);
     dbhdr->version = htons(dbhdr->version);
     dbhdr->count = htonl(dbhdr->count);
-    dbhdr->filesize = htonl(dbhdr->filesize);
+    dbhdr->filesize = htonl(sizeof(db_header_t) + (sizeof(hero_t) * count));
 
     lseek(dbfd, 0, SEEK_SET);
     write(dbfd, dbhdr, sizeof(db_header_t));
@@ -142,6 +143,11 @@ int output_file(int dbfd, db_header_t *dbhdr, hero_t *heroes) {
 
         write(dbfd, &to_write, sizeof(hero_t));
     }
+
+    dbhdr->magic = ntohl(dbhdr->magic);
+    dbhdr->version = ntohs(dbhdr->version);
+    dbhdr->count = ntohl(dbhdr->count);
+    dbhdr->filesize = ntohl(sizeof(db_header_t) + (sizeof(hero_t) * count));
 
     return STATUS_OK;
 }
