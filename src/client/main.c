@@ -10,6 +10,54 @@
 #include "defs.h"
 #include "srvpoll.h"
 
+int send_list_req(int fd) {
+    char buf[MAX_BUFFER] = {0};
+
+    proto_hdr_t *hdr = (proto_hdr_t *)buf;
+    hdr->type = htonl(MSG_LIST_HERO_REQ);
+    hdr->len = htons(0);
+
+    proto_list_hero_req *request = (proto_list_hero_req *)&hdr[1];
+
+    write(fd, buf, sizeof(proto_hdr_t) + sizeof(proto_add_hero_req));
+
+    // read msg from server
+    read(fd, buf, MAX_BUFFER);
+
+    hdr->type = ntohl(hdr->type);
+    hdr->len = ntohs(hdr->len);
+
+    if (hdr->type == MSG_ERROR) {
+        printf("Protocol mismatch!\n");
+        close(fd);
+        return STATUS_ERROR;
+    }
+
+    printf("there are %d employees\n", hdr->len);
+
+    if (hdr->type == MSG_LIST_HERO_RES) {
+        printf("listing...\n");
+
+        proto_list_hero_res *hero = (proto_list_hero_res *)&hdr[1];
+
+        for (int i = 0; i < hdr->len; i++) {
+            read(fd, hero, sizeof(proto_list_hero_res));
+
+            hero->type = ntohl(hero->type);
+            hero->hp = ntohl(hero->hp);
+            hero->atk = ntohl(hero->atk);
+
+            printf("Hero %d\n", i);
+            printf("\t%s\n", hero->name);
+            printf("\tType: %d\n", hero->type);
+            printf("\tHp: %d\n", hero->hp);
+            printf("\tAtk: %d\n", hero->atk);
+        }
+    }
+
+    return STATUS_OK;
+}
+
 int send_add_req(int fd, char *addstring) {
     char buf[MAX_BUFFER] = {0};
 
@@ -71,9 +119,11 @@ int main(int argc, char *argv[]) {
     char *portarg = NULL;
     unsigned short port = 0;
 
+    char should_list = 0;
+
     int opt;
 
-    while ((opt = getopt(argc, argv, "p:h:a:")) != -1) {
+    while ((opt = getopt(argc, argv, "p:h:a:l")) != -1) {
         switch (opt) {
         case 'h':
             hostarg = optarg;
@@ -84,6 +134,9 @@ int main(int argc, char *argv[]) {
             break;
         case 'a':
             addarg = optarg;
+            break;
+        case 'l':
+            should_list = 1;
             break;
         default:
             printf("incorrect usage\n");
@@ -129,6 +182,10 @@ int main(int argc, char *argv[]) {
             printf("Error adding hero to database\n");
             return -1;
         }
+    }
+
+    if (should_list) {
+        send_list_req(serverSocket);
     }
 
     close(serverSocket);

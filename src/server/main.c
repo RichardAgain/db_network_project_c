@@ -14,7 +14,7 @@
 
 client_state_t clients[MAX_CLIENTS];
 
-int poll_loop(int dbfd, db_header_t *dbhdr, hero_t *heroes) {
+int poll_loop(int dbfd, db_header_t *dbhdr, hero_t **heroes) {
     char buffer[MAX_BUFFER];
 
     struct sockaddr_in serverAddress = {0};
@@ -94,7 +94,7 @@ int poll_loop(int dbfd, db_header_t *dbhdr, hero_t *heroes) {
                 ssize_t bytes_read = read(fd, &clients[idx].buffer, sizeof(buffer));
 
                 if (bytes_read <= 0) {
-                    printf("closing connection\n");
+                    printf("Closing connection\n");
 
                     close(fd);
                     clients[idx].fd = -1;
@@ -104,7 +104,7 @@ int poll_loop(int dbfd, db_header_t *dbhdr, hero_t *heroes) {
                     continue;
                 }
 
-                handle_client_msg(dbfd, dbhdr, &heroes, &clients[idx]);
+                handle_client_msg(dbfd, dbhdr, heroes, &clients[idx]);
             }
         }
     }
@@ -197,7 +197,7 @@ int main(int argc, char *argv[]) {
         list_heroes(db_header, heroes);
     }
 
-    poll_loop(dbfd, db_header, heroes);
+    poll_loop(dbfd, db_header, &heroes);
 
     output_file(dbfd, db_header, heroes);
 

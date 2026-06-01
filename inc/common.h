@@ -36,4 +36,14 @@ typedef struct {
 	char data[256];
 } proto_add_hero_res;
 
+typedef struct {
+} proto_list_hero_req;
+
+typedef struct {
+    char name[256];
+    int type;
+    int hp;
+    int atk;
+} proto_list_hero_res;
+
 #endif

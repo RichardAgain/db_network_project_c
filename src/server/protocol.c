@@ -12,7 +12,26 @@
 #include "files.h"
 #include "srvpoll.h"
 
-void send_add_msg(int client_fd, proto_hdr_t *hdr, char* addstring) {
+void send_list_msg(int client_fd, proto_hdr_t *hdr, db_header_t *dbhdr,
+                   hero_t *heroes) {
+    hdr->type = htonl(MSG_LIST_HERO_RES);
+    hdr->len = htons(dbhdr->count);
+
+    write(client_fd, hdr, sizeof(proto_hdr_t));
+
+    proto_list_hero_res *hero = (proto_list_hero_res *)&hdr[1];
+
+    for (int i = 0; i < dbhdr->count; i++) {
+        strncpy(hero->name, heroes[i].name, sizeof(hero->name) - 1);
+        hero->type = htonl(heroes[i].type);
+        hero->hp = htonl(heroes[i].hp);
+        hero->atk = htonl(heroes[i].atk);
+
+        write(client_fd, hero, sizeof(hero_t));
+    }
+}
+
+void send_add_msg(int client_fd, proto_hdr_t *hdr, char *addstring) {
     hdr->type = htonl(MSG_HELLO_RES);
     hdr->len = htons(1);
     proto_add_hero_res *request = (proto_add_hero_res *)&hdr[1];
@@ -37,7 +56,8 @@ void send_error_msg(int client_fd, proto_hdr_t *hdr) {
     write(client_fd, hdr, sizeof(proto_hdr_t));
 }
 
-void handle_client_msg(int dbfd, db_header_t *db_header, hero_t **heroes, client_state_t *client) {
+void handle_client_msg(int dbfd, db_header_t *db_header, hero_t **heroes,
+                       client_state_t *client) {
     proto_hdr_t *header = (proto_hdr_t *)client->buffer;
 
     header->type = ntohl(header->type);
@@ -59,7 +79,6 @@ void handle_client_msg(int dbfd, db_header_t *db_header, hero_t **heroes, client
             return;
         }
 
-        printf("client sent hello!\n");
         client->state = STATE_MSG;
         send_hello_msg(client->fd, header);
     }
@@ -68,19 +87,22 @@ void handle_client_msg(int dbfd, db_header_t *db_header, hero_t **heroes, client
         if (header->type == MSG_ADD_HERO_REQ) {
             proto_add_hero_req *request = (proto_add_hero_req *)&header[1];
 
-
-            if (add_hero(db_header, heroes, (char*)request->data) == STATUS_ERROR) {
+            if (add_hero(db_header, heroes, (char *)request->data) ==
+                STATUS_ERROR) {
                 printf("Error adding hero to database\n");
                 send_error_msg(client->fd, header);
             }
 
-            send_add_msg(client->fd, header, (char*)request->data);
+            send_add_msg(client->fd, header, (char *)request->data);
             printf("Succesfully added hero\n");
 
             output_file(dbfd, db_header, *heroes);
         }
 
         if (header->type == MSG_LIST_HERO_REQ) {
+            proto_add_hero_req *request = (proto_add_hero_req *)&header[1];
+
+            send_list_msg(client->fd, header, db_header, *heroes);
         }
     }
 }
